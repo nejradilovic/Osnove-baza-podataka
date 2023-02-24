@@ -12,5 +12,5 @@ Laboratorijske vježbe i zadaće iz predmeta "Osnove baza podataka".
 * DB procedure i funkcije
 * DB trigeri
 
-<h3 align="left">Languages and Tools:</h3>
+<h3 align="left">Database:</h3>
 <p align="left"> <a href="https://www.oracle.com/" target="_blank" rel="noreferrer"> <img src="https://raw.githubusercontent.com/bablubambal/All_logo_and_pictures/7c0ac2ceb9f9d24992ec393d11fa7337d2f92466/databases/oracle.svg" alt="oracle" width="60" height="60"/> </a> </p>
