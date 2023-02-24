@@ -1,0 +1,85 @@
+--Zadatak 2. 
+--TabelaA
+CREATE TABLE TabelaA
+                      (id NUMBER(15),
+                       naziv VARCHAR(25),
+                       datum DATE,
+                       cijelibroj NUMBER(20),
+                       realnibroj NUMBER(20,2),
+                       CONSTRAINT TabelaA_id_pk PRIMARY KEY(id),
+                       CONSTRAINT cbrojA_check CHECK(cijelibroj NOT BETWEEN 5 AND 15),
+                       CONSTRAINT rbrojA_check CHECK(realnibroj > 5)
+                       );
+--TabelaB
+CREATE TABLE TabelaB
+                    (id NUMBER(15), 
+                     naziv VARCHAR(25),
+                     datum DATE, 
+                     cijelibroj NUMBER(20), 
+                     realnibroj NUMBER(20,2), 
+                     FKTabelaA NUMBER(15) NOT NULL, 
+                     CONSTRAINT  TabelaB_id_pk PRIMARY KEY(id),
+                     CONSTRAINT TabelaB_fk FOREIGN KEY(FKTabelaA) REFERENCES TabelaA(id),
+                     CONSTRAINT cbrojB_uk UNIQUE(cijelibroj)
+                     );
+--TabelaC
+CREATE TABLE TabelaC
+                    (id NUMBER(15), 
+                    naziv VARCHAR(25) NOT NULL,
+                    datum DATE,
+                    cijelibroj NUMBER(20) NOT NULL,
+                    realnibroj NUMBER(20,2), 
+                    FKTabelaB NUMBER(15),
+                    CONSTRAINT  TabelaC_id_pk PRIMARY KEY(id),
+                    CONSTRAINT FkCnst FOREIGN KEY (FKTabelaB) REFERENCES TabelaB(id)
+                    );
+--Unos u TabelaA
+INSERT INTO tabelaA VALUES(1, 'tekst', NULL, NULL, 6.2);
+INSERT INTO tabelaA VALUES(2, NULL, NULL, 3, 5.26);
+INSERT INTO tabelaA VALUES(3, 'tekst', NULL, 1, NULL);
+INSERT INTO tabelaA VALUES(4, NULL, NULL, NULL, NULL);
+INSERT INTO tabelaA VALUES(5, 'tekst', NULL, 16, 6.78);
+--Unos u TabelaB
+INSERT INTO tabelaB VALUES(1, NULL, NULL, 1, NULL, 1);
+INSERT INTO tabelaB VALUES(2, NULL, NULL, 3, NULL, 1);
+INSERT INTO tabelaB VALUES(3, NULL, NULL, 6, NULL, 2);
+INSERT INTO tabelaB VALUES(4, NULL, NULL, 11, NULL, 2);
+INSERT INTO tabelaB VALUES(5, NULL, NULL, 22, NULL, 3);
+--Unos u TabelaC
+INSERT INTO tabelaC VALUES(1, 'YES', NULL, 33, NULL,4);
+INSERT INTO tabelaC VALUES(2, 'NO', NULL, 33, NULL, 2);
+INSERT INTO tabelaC VALUES(3, 'NO', NULL, 55, NULL, 1);   
+
+--Komande
+INSERT INTO TabelaA (id,naziv,datum,cijeliBroj,realniBroj) VALUES (6,'tekst',null,null,6.20); 
+--komanda se moze izvrsiti jer nam se poklapa broj vrijednosti i kolona, te vrijednosti koje unosimo zadovoljavaju data ogranicenja svake kolone
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (6,null,null,1,null,1);
+--ORA-00001: unique constraint (NA19061.CBROJB_UK) violated
+--komanda se ne moze izvrsiti jer TabelaB ima ogranicenje da cijeliBroj  mora biti UNIQUE
+--mi smo vec dok smo unosili vrijednosti unijeli broj 1 za cijeliBroj te ne mozemo ponovo
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (7,null,null,123,null,6);
+--komanda se moze izvrsiti ponovo nam se poklapa broj vrijednosti i kolona, te vrijednosti koje unosimo zadovoljavaju data ogranicenja svake kolone
+INSERT INTO TabelaC (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaB) VALUES (4,'NO',null,55,null,null);
+--komanda se moze izvrsiti ponovo nam se poklapa broj vrijednosti i kolona, te vrijednosti koje unosimo zadovoljavaju data ogranicenja svake kolone
+Update TabelaA set naziv = 'tekst' Where naziv is null and cijeliBroj is not null;
+--komanda se moze izvrsiti jer zaista imamo u tabeli tabelaA red gdje nam je naziv null a cijeliBroj nije
+Drop table tabelaB;
+--ORA-02449: unique/primary keys in table referenced by foreign keys
+--komanda se ne moze izvrsiti jer imamo FOREIGN KEY u tabeli TabelaC koji je povezan sa PRIMARY KEY tabele TabelaB koju pokusavamo droppati
+Delete from TabelaA where realniBroj is null;
+--ORA-02292: integrity constraint (NA19061.TABELAB_FK) violated - child record found
+--komanda se ne moze izvrsiti jer kad bismo obrisali iz tabele TabelaA ne bi vise postojao FOREIGN KEY koji se nalazi u tabeli TabelaB 
+Delete from TabelaA where id = 5;
+--komanda se moze izvrsiti jer u TabelaB nemamo vrijednosti za FOREIGN KEY id=5
+Update TabelaB set fktabelaA = 4 where fktabelaA = 2;
+--komanda se moze izvrsiti jer zaista u tabli TabelaA imamo vrijednost id=4
+Alter Table tabelaA add Constraint cst Check (naziv like 'tekst');
+--komanda se moze izvrsiti jer CONSTRAINT mozemo dodati 
+
+--Rezultati za provjeru:
+Select Sum(id) From TabelaA ;
+--Rezultat 16
+Select Sum(id) FROM TabelaB;
+--Rezultat 22
+Select Sum(id) From TabelaC; 
+--Rezultat 10
