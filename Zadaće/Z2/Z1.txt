@@ -1,0 +1,91 @@
+--Zadatak 1.
+ALTER SESSION SET CURRENT_SCHEMA=erd;
+--1.
+SELECT DISTINCT p.naziv ResNaziv
+FROM pravno_lice p, fizicko_lice f 
+WHERE f.lokacija_id=p.lokacija_id AND p.lokacija_id = ANY (SELECT f.lokacija_id 
+                                              FROM fizicko_lice f, lokacija l
+                                              WHERE f.lokacija_id=l.lokacija_id);
+
+--moze i bez podupita
+
+SELECT DISTINCT p.naziv ResNaziv
+FROM pravno_lice p, fizicko_lice f 
+WHERE f.lokacija_id=p.lokacija_id
+
+--2. 
+SELECT DISTINCT  To_Char(u.datum_potpisivanja,'dd.MM.yyyy') "Datum Potpisivanja", p.naziv ResNaziv
+FROM ugovor_za_pravno_lice u, pravno_lice p
+WHERE u.pravno_lice_id=p.pravno_lice_id AND u.datum_potpisivanja > ANY (SELECT Min(f.datum_kupoprodaje)
+                                                                        FROM faktura f, proizvod p
+                                                                        WHERE  p.broj_mjeseci_garancije IS NOT NULL);
+
+--3. 
+SELECT p.naziv
+FROM proizvod p
+WHERE p.kategorija_id = ANY(SELECT p1.kategorija_id
+                            FROM proizvod p1, kategorija k , kolicina k1
+                            WHERE p1.kategorija_id=k.kategorija_id AND k1.proizvod_id=p1.proizvod_id AND k1.kolicina_proizvoda=(SELECT Max(k.kolicina_proizvoda)
+                                                                                                                                FROM kolicina k, proizvod p
+                                                                                                                                WHERE p.proizvod_id=k.proizvod_id));
+
+--4. 
+SELECT p.naziv "Proizvod", pl.naziv "Proizvodjac"
+FROM proizvod p, proizvodjac pr, pravno_lice pl
+WHERE p.proizvodjac_id=pr.proizvodjac_id  AND pl.pravno_lice_id=pr.proizvodjac_id AND pr.proizvodjac_id = ANY (SELECT pr.proizvodjac_id
+                                                                                                               FROM proizvodjac pr,proizvod p
+                                                                                                               WHERE p.proizvodjac_id=pr.proizvodjac_id  AND p.cijena > ANY (SELECT Round(Avg(p.cijena))  
+                                                                                                                                                                             FROM proizvod p, proizvodjac pr
+                                                                                                                                                                             WHERE p.proizvodjac_id=pr.proizvodjac_id));
+
+--5. 
+SELECT fl.ime || ' ' || fl.prezime "Ime i prezime", Sum(f.iznos) "iznos"
+FROM fizicko_lice fl, kupac k, uposlenik u, faktura f
+WHERE k.kupac_id=fl.fizicko_lice_id AND u.uposlenik_id=fl.fizicko_lice_id AND k.kupac_id=f.kupac_id 
+HAVING Sum(f.iznos) > (SELECT Round(Avg(Sum(f.iznos)),2)
+                       FROM faktura f, fizicko_lice fl
+                       WHERE f.kupac_id=fl.fizicko_lice_id
+                       GROUP BY fl.ime, fl.prezime)
+GROUP BY fl.ime, fl.prezime;
+
+--6. 
+SELECT pl.naziv "naziv"
+FROM pravno_lice pl, isporuka i, faktura f, kurirska_sluzba k, narudzba_proizvoda n, popust p
+WHERE pl.pravno_lice_id=k.kurirska_sluzba_id AND i.isporuka_id = f.isporuka_id AND i.kurirska_sluzba_id=k.kurirska_sluzba_id AND f.faktura_id = n.faktura_id AND
+      n.popust_id = ANY (SELECT popust_id 
+			 FROM popust 	
+			 WHERE postotak IS NOT NULL)
+HAVING Sum(n.kolicina_jednog_proizvoda) IN (SELECT Max(Sum(n1.kolicina_jednog_proizvoda))
+                                               FROM narudzba_proizvoda n1,  kurirska_sluzba k1, pravno_lice pl1, isporuka i1, faktura f1, popust p1
+                                               WHERE k1.kurirska_sluzba_id = pl1.pravno_lice_id AND k1.kurirska_sluzba_id = i1.kurirska_sluzba_id AND i1.isporuka_id = f1.isporuka_id AND f1.faktura_id = n1.faktura_id AND
+                                                      n1.popust_id IN (SELECT popust_id
+									   FROM popust 
+									   WHERE postotak IS NOT NULL) 
+                                               GROUP BY k1.kurirska_sluzba_id)
+GROUP BY pl.naziv;
+
+--7.
+SELECT fl.ime || ' ' || fl.prezime "Kupac", Sum(n.kolicina_jednog_proizvoda*p.cijena*d.postotak/100) "Usteda"
+FROM fizicko_lice fl, kupac k, faktura f, proizvod p, popust d, narudzba_proizvoda n
+WHERE k.kupac_id=fl.fizicko_lice_id AND k.kupac_id=f.kupac_id AND n.popust_id=d.popust_id AND n.proizvod_id=p.proizvod_id AND f.faktura_id=n.faktura_id
+GROUP BY fl.ime || ' ' || fl.prezime;
+
+--8.
+SELECT DISTINCT i.isporuka_id idisporuke, i.kurirska_sluzba_id idkurirske 
+FROM isporuka i, faktura f, proizvod p, popust d, narudzba_proizvoda n
+WHERE i.isporuka_id=f.isporuka_id AND p.proizvod_id=n.proizvod_id AND d.popust_id=n.popust_id AND n.faktura_id=f.faktura_id AND p.broj_mjeseci_garancije IS NOT NULL AND d.postotak IS NOT NULL;
+
+--9.
+SELECT p.naziv, p.cijena 
+FROM proizvod p
+WHERE p.cijena > (SELECT Round(Avg(Max(p.cijena)),2)
+                  FROM proizvod p
+                  GROUP BY p.kategorija_id);
+
+--10.
+SELECT p.naziv, p.cijena 
+FROM proizvod p
+WHERE p.cijena < ALL (SELECT Avg(p1.cijena)
+                      FROM proizvod p1, kategorija k
+                      WHERE p1.kategorija_id=k.kategorija_id AND p.kategorija_id!=k.nadkategorija_id
+                      GROUP BY p1.kategorija_id);
