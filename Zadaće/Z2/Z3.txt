@@ -1,0 +1,154 @@
+--Zadatak 3. 
+--TabelaA
+DROP TABLE TabelaC;
+DROP TABLE TabelaB;
+DROP TABLE TabelaA;       
+CREATE TABLE TabelaA
+                      (id NUMBER(15),
+                       naziv VARCHAR(25),
+                       datum DATE,
+                       cijeliBroj NUMBER(20),
+                       realniBroj NUMBER(20,2),
+                       CONSTRAINT TabelaA_id_pk PRIMARY KEY(id),
+                       CONSTRAINT cbrojA_check CHECK(cijelibroj NOT BETWEEN 5 AND 15),
+                       CONSTRAINT rbrojA_check CHECK(realnibroj > 5)
+                       );
+--TabelaB
+CREATE TABLE TabelaB
+                    (id NUMBER(15), 
+                     naziv VARCHAR(25),
+                     datum DATE, 
+                     cijeliBroj NUMBER(20), 
+                     realniBroj NUMBER(20,2), 
+                     FKTabelaA NUMBER(15) NOT NULL, 
+                     CONSTRAINT  TabelaB_id_pk PRIMARY KEY(id),
+                     CONSTRAINT TabelaB_fk FOREIGN KEY(FKTabelaA) REFERENCES TabelaA(id),
+                     CONSTRAINT cbrojB_uk UNIQUE(cijelibroj)
+                     );
+--TabelaC
+CREATE TABLE TabelaC
+                    (id NUMBER(15), 
+                    naziv VARCHAR(25) NOT NULL,
+                    datum DATE,
+                    cijeliBroj NUMBER(20) NOT NULL,
+                    realniBroj NUMBER(20,2), 
+                    FKTabelaB NUMBER(15),
+                    CONSTRAINT  TabelaC_id_pk PRIMARY KEY(id),
+                    CONSTRAINT FkCnst FOREIGN KEY (FKTabelaB) REFERENCES TabelaB(id)
+                    );
+--Unos u TabelaA
+INSERT INTO tabelaA VALUES(1, 'tekst', NULL, NULL, 6.2);
+INSERT INTO tabelaA VALUES(2, NULL, NULL, 3, 5.26);
+INSERT INTO tabelaA VALUES(3, 'tekst', NULL, 1, NULL);
+INSERT INTO tabelaA VALUES(4, NULL, NULL, NULL, NULL);
+INSERT INTO tabelaA VALUES(5, 'tekst', NULL, 16, 6.78);
+--Unos u TabelaB
+INSERT INTO tabelaB VALUES(1, NULL, NULL, 1, NULL, 1);
+INSERT INTO tabelaB VALUES(2, NULL, NULL, 3, NULL, 1);
+INSERT INTO tabelaB VALUES(3, NULL, NULL, 6, NULL, 2);
+INSERT INTO tabelaB VALUES(4, NULL, NULL, 11, NULL, 2);
+INSERT INTO tabelaB VALUES(5, NULL, NULL, 22, NULL, 3);
+--Unos u TabelaC
+INSERT INTO tabelaC VALUES(1, 'YES', NULL, 33, NULL,4);
+INSERT INTO tabelaC VALUES(2, 'NO', NULL, 33, NULL, 2);
+INSERT INTO tabelaC VALUES(3, 'NO', NULL, 55, NULL, 1); 
+
+--Sekvenca seq1
+CREATE SEQUENCE seq1
+INCREMENT BY 1 
+START WITH 1;
+--Sekvenca seq2     
+CREATE SEQUENCE seq2
+INCREMENT BY 1
+START WITH 1;
+
+--Kreiranje TabelaABekap 
+CREATE TABLE  TabelaABekap 
+AS 
+SELECT * FROM tabelaA  WHERE 1=2;
+--Izgled nase tabele  TabelaABekap
+SELECT * FROM  TabelaABekap;
+--Dodavanje nedostajucih kolona cijeliBrojB tipa INTEGER i sekvencu tipa INTEGER
+ALTER TABLE TabelaABekap 
+ADD(cijeliBrojB INTEGER,sekvenca INTEGER);
+
+--Kreiranje trigera trig_tabelaB
+CREATE OR REPLACE TRIGGER trig_tabelaB
+AFTER INSERT ON TabelaB
+FOR EACH ROW 
+DECLARE 
+  newid TabelaB.id%TYPE;
+  newnaziv TabelaB.naziv%TYPE;
+  newdatum TabelaB.datum%TYPE;
+  newcijeliBroj TabelaB.cijeliBroj%TYPE;
+  newrealniBroj TabelaB.realniBroj%TYPE;
+  brojac INTEGER;
+BEGIN
+  SELECT TabelaA.id, TabelaA.naziv, TabelaA.datum, TabelaA.cijeliBroj, TabelaA.realniBroj
+  INTO newid, newnaziv, newdatum, newcijeliBroj, newrealniBroj 
+  FROM TabelaA WHERE TabelaA.id = :new.FKTabelaA;
+  SELECT Count(id) INTO brojac 
+  FROM TabelaABekap WHERE id=newid;
+  IF(brojac>0) THEN 
+    UPDATE TabelaABekap
+    SET cijeliBrojB = cijeliBrojB + :new.cijeliBroj 
+    WHERE id=newid;
+  ELSE 
+    INSERT INTO TabelaABekap(id, naziv, datum, cijeliBroj, realniBroj, cijeliBrojB, sekvenca)
+    VALUES (newid, newnaziv, newdatum, newcijeliBroj, newrealniBroj, :new.cijelibroj, seq1.NEXTVAL);
+  END IF;
+END;
+
+--Kreiranje tabele TabelaBCheck
+CREATE TABLE TabelaBCheck(sekvenca INTEGER PRIMARY KEY);
+--Kreiranje trigera trig2_tabelaB
+CREATE OR REPLACE TRIGGER trig2_tabelaB
+AFTER DELETE ON TabelaB 
+BEGIN       
+  INSERT INTO TabelaBCheck VALUES(seq2.NEXTVAL-1);
+END;
+
+--Kreiranje procedure proc_TabelaC
+CREATE OR REPLACE PROCEDURE proc_TabelaC
+(x NUMBER)
+IS
+  i NUMBER :=0;          
+  cijeliBroj_suma NUMBER :=0; 
+BEGIN 
+    SELECT Sum(cijeliBroj) INTO cijeliBroj_suma FROM TabelaA;
+    FOR i IN 1 .. cijeliBroj_suma LOOP
+     INSERT INTO TabelaC(id, naziv, cijeliBroj) VALUES ((SELECT Max(id) FROM TabelaC)+1, 'NO', x);
+    END LOOP; 
+END; 
+
+--Komande
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (6,null,null,2,null,1);
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (7,null,null,4,null,2);
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (8,null,null,8,null,1);
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (9,null,null,5,null,3);
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (10,null,null,7,null,3);
+INSERT INTO TabelaB (id,naziv,datum,cijeliBroj,realniBroj,FkTabelaA) VALUES (11,null,null,9,null,5);
+Delete From TabelaB where id not in (select FkTabelaB from TabelaC);
+Alter TABLE tabelaC drop constraint FkCnst;
+Delete from TabelaB where 1=1;
+call proc_TabelaC(1);
+
+SELECT * FROM TabelaABekap;
+SELECT * FROM TabelaC;
+SELECT * FROM TabelaBCheck;
+
+--Provjera
+Select SUM(id*3 + cijeliBrojB*3) from TabelaABekap;
+--138
+Select Sum(id*3 + cijeliBroj*3) from TabelaC;
+--1251
+Select Sum(MOD(sekvenca,10)*3) from TabelaBCheck;
+--9
+
+--Rezultati
+Select SUM(id*7 + cijeliBrojB*7) from TabelaABekap;
+--322
+Select Sum(id*7 + cijeliBroj*7) from TabelaC;
+--2919
+Select Sum(MOD(sekvenca,10)*7) from TabelaBCheck;
+--21
