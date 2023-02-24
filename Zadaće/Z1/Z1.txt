@@ -1,0 +1,53 @@
+--1.
+SELECT Nvl(d.naziv, 'Nema drzave') AS Drzava, Nvl(g.naziv,'Nema grada') AS Grad, k.naziv AS Kontinent
+FROM drzava d, grad g, kontinent k
+WHERE d.drzava_id=g.drzava_id(+) AND k.kontinent_id=d.kontinent_id(+);
+--2.
+SELECT DISTINCT  p.naziv
+FROM pravno_lice p, ugovor_za_pravno_lice u
+WHERE p.pravno_lice_id=u.pravno_lice_id AND u.datum_potpisivanja BETWEEN To_Date('2014', 'YYYY') AND To_Date('2016','YYYY');
+--3.
+SELECT d.naziv AS Drzava, p.naziv AS Proizvod, k.kolicina_proizvoda AS Kolicina_proizvoda
+FROM drzava d, proizvod p, kolicina k, grad g, lokacija l, skladiste s
+WHERE s.skladiste_id=k.skladiste_id AND p.proizvod_id=k.proizvod_id AND  d.drzava_id=g.drzava_id AND g.grad_id=l.grad_id AND l.lokacija_id=s.lokacija_id  AND k.kolicina_proizvoda>50 AND d.naziv NOT LIKE '%s%s%';
+--4.
+SELECT DISTINCT  p.naziv AS Naziv, p.broj_mjeseci_garancije
+FROM proizvod p, narudzba_proizvoda n, popust d
+WHERE p.proizvod_id=n.proizvod_id AND n.popust_id=d.popust_id AND d.postotak>0 AND Mod(p.broj_mjeseci_garancije,3)=0;
+--5.
+SELECT f.ime || ' ' || f.prezime "ime i prezime", o.naziv "Naziv odjela", 19061 "Indeks"
+FROM fizicko_lice f, odjel o, kupac k, uposlenik u 
+WHERE f.fizicko_lice_id=k.kupac_id AND u.uposlenik_id=k.kupac_id AND o.odjel_id=u.odjel_id AND k.kupac_id!=o.sef_id;
+--6.
+SELECT n.narudzba_id Narudzba_id, p.cijena Cijena, Nvl(d.postotak, 0) Postotak, nvl(d.postotak/100,0) PostotakRealni 
+FROM proizvod p, popust d, narudzba_proizvoda n
+WHERE p.proizvod_id=n.proizvod_id AND d.popust_id(+)=n.popust_id AND  (Nvl(d.postotak, 0)/100)*p.cijena<200;
+--7.
+SELECT Decode(k1.kategorija_id,
+              1, 'Komp Oprema',
+              NULL, 'Nema kategorije',k1.naziv) "Kategorija",
+       Decode(k2.kategorija_id,
+              1, 'Komp Oprema',
+              NULL, 'Nema Kategorije') "Nadkategorija" 
+FROM kategorija k1, kategorija k2 where k1.nadkategorija_id=k2.kategorija_id(+);
+--8.
+SELECT Trunc(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'), u.datum_potpisivanja)/12) godina, Trunc(Mod(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'), u.datum_potpisivanja),12)) mjeseci,Trunc(To_Date('10.10.2020','dd.mm.yyyy') - Add_Months(u.datum_potpisivanja, Trunc(Months_Between(To_Date('10.10.2020','dd.mm.yyyy'), u.datum_potpisivanja)))) dana
+FROM  ugovor_za_pravno_lice u
+WHERE (Months_Between(To_Date('10.01.2020','dd.mm.yyyy'), Trunc(u.datum_potpisivanja))/12)>To_Number(SubStr(u.ugovor_id,0,2));
+--9.
+SELECT f.ime ime, f.prezime prezime, Decode(o.naziv, 'Managment','MANAGER', 'Human Resources', 'HUMAN','OTHER') Odjel, o.odjel_id odjel_id
+FROM fizicko_lice f, odjel o , uposlenik u
+WHERE f.fizicko_lice_id=u.uposlenik_id AND  o.odjel_id=u.odjel_id 
+ORDER BY f.ime ASC, f.prezime DESC; 
+--10.
+SELECT p.naziv Najjeftiniji, p1.naziv Najskuplji, (p.cijena+p1.cijena) ZCijena
+FROM kategorija k, proizvod p, proizvod p1  
+WHERE k.kategorija_id=p.kategorija_id AND k.kategorija_id=p1.kategorija_id AND
+p.cijena=(SELECT Min(minimum.cijena)
+          FROM proizvod minimum
+          WHERE k.kategorija_id=minimum.kategorija_id)
+AND 
+p1.cijena=(SELECT Max(maksimum.cijena)
+          FROM proizvod maksimum
+          WHERE k.kategorija_id=maksimum.kategorija_id)
+ORDER BY ZCijena ASC;
